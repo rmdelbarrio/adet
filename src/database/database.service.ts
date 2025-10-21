@@ -18,6 +18,9 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       waitForConnections: true,
       connectionLimit: 10,
       queueLimit: 0,
+        ssl: {
+    rejectUnauthorized: false, // ✅ REQUIRED for Aiven/Render MySQL
+  },
     });
 
     const conn = await this.pool.getConnection();
