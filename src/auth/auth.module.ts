@@ -1,22 +1,21 @@
 import { Module } from '@nestjs/common';
-import { AuthService } from './auth.service';
+import { AuthService } from './auth.service'; 
+import { AuthController } from './auth.controller';
 import { UsersModule } from '../users/users.module';
 import { JwtModule } from '@nestjs/jwt';
-import { AuthController } from './auth.controller';
+import { PassportModule } from '@nestjs/passport';
 import { JwtStrategy } from './jwt.strategy';
-import { Reflector } from '@nestjs/core'; // Import Reflector
 
 @Module({
   imports: [
     UsersModule,
+    PassportModule,
     JwtModule.register({
-      secret: process.env.JWT_SECRET || 'secret_key',
-      signOptions: { expiresIn: process.env.JWT_EXPIRES_IN || '60s' },
+      secret: process.env.JWT_ACCESS_TOKEN_SECRET || 'access_secret',
+      signOptions: { expiresIn: process.env.ACCESS_TOKEN_EXPIRES_IN || '900s' },
     }),
   ],
+  providers: [AuthService, JwtStrategy],
   controllers: [AuthController],
-  // FIX: Add Reflector and JwtStrategy to providers/exports
-  providers: [AuthService, JwtStrategy, Reflector],
-  exports: [AuthService, JwtModule, Reflector],
 })
 export class AuthModule {}
