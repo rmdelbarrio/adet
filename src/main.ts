@@ -21,7 +21,11 @@ async function bootstrap() {
     ];
 
     // FIX: Use CorsOptionsDelegate type for strict TypeScript mode
-    const originDelegate: CorsOptionsDelegate = (origin, callback) => {
+    // We explicitly set the types for 'origin' and 'callback' to satisfy the TS compiler (TS7006)
+    const originDelegate: CorsOptionsDelegate = (
+        origin: string | undefined, // Explicitly typed as string | undefined
+        callback: (err: Error | null, allow?: boolean) => void // Explicitly typed
+    ) => {
         // If the origin is not set (e.g., direct API call), allow it
         if (!origin) {
             callback(null, true);
