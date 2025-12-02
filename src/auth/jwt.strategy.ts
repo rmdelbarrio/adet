@@ -1,40 +1,19 @@
-import { Strategy } from 'passport-jwt';
+import { Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
-import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { UsersService } from '../../src/users/users.service';
-
-const extractJwtFromCookie = (req: any) => {
-    let token = null;
-    if (req && req.cookies) {
-        token = req.cookies['accessToken'];
-    }
-    return token;
-}; 
+import { Strategy, ExtractJwt } from 'passport-jwt';
 
 @Injectable()
-export class JwtStrategy extends PassportStrategy(Strategy) {
-    constructor(private usersService: UsersService) {
-        super({
-            jwtFromRequest: extractJwtFromCookie, // Look for JWT in the 'accessToken' cookie
-            ignoreExpiration: false,
-            secretOrKey: process.env.JWT_SECRET || 'secret_key',
-        });
-    }
+export class JwtStrategy extends PassportStrategy(Strategy){
+  constructor() {
+    super({
+        jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+        ignoreExpiration: false,
+        secretOrKey: process.env.JWT_ACCESS_TOKEN_SECRET || 'access_secret',
+    })
+  }  
 
-    // FIX: Ensure the 'role' is included in the validated payload
-    async validate(payload: any) {
-        // Fetch user from DB or trust payload if user data is minimal (we'll fetch for safety)
-        const user = await this.usersService.findById(payload.sub); 
-
-        if (!user) {
-            throw new UnauthorizedException();
-        }
-
-        // Return the minimal user object including the role
-        return { 
-            user_id: payload.sub, 
-            username: payload.username, 
-            role: payload.role // CRITICAL: Pass the role forward
-        };
-    }
+  async validate(payload: any){
+    //parload contains {sub, username, role}
+    return {userId: payload.sub, username: payload.username, role: payload.role}   
+  }
 }
