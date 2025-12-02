@@ -9,7 +9,7 @@ const extractJwtFromCookie = (req: any) => {
         token = req.cookies['accessToken'];
     }
     return token;
-};
+}; 
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
