@@ -4,13 +4,11 @@ import * as mysql from 'mysql2/promise';
 import * as bcrypt from 'bcryptjs'; 
 import { RowDataPacket, ResultSetHeader } from 'mysql2/promise';
 
-// Define a common interface for User data retrieved from DB
+// Define the interface that exactly matches the database columns (id, username, password)
 interface UserDb extends RowDataPacket {
-    // FIX: Using 'id' to match the scheme.sql PRIMARY KEY
     id: number; 
     username: string;
-    // FIX: Using 'password' to match the scheme.sql password column
-    password: string; 
+    password: string; // Mapped from the 'password' column in scheme.sql
     refresh_token: string | null;
     role: 'user' | 'admin';
 }
@@ -21,10 +19,10 @@ export class UsersService {
 
     // --- Authentication Required Methods ---
 
+    // Find a user by primary key ID
     async findById(userId: number): Promise<UserDb | null> {
         const connection = await this.databaseService.getConnection(); 
         try {
-            // FIX: WHERE id = ?
             const [rows] = await connection.execute('SELECT * FROM users WHERE id = ?', [userId]);
             return (rows as UserDb[])[0] || null;
         } finally {
@@ -32,6 +30,7 @@ export class UsersService {
         }
     }
 
+    // Find a user by username (for login validation)
     async findByUsername(username: string): Promise<UserDb | null> {
         const connection = await this.databaseService.getConnection(); 
         try {
@@ -53,17 +52,16 @@ export class UsersService {
     }
 
     async createUser(username: string, password: string): Promise<any> {
-        // FIX: Hashing the input password before storing
+        // Hashing the input password before storing
         const passwordHash = await bcrypt.hash(password, 10); 
         const connection = await this.databaseService.getConnection(); 
         try {
-            // FIX: Use 'password' column name in INSERT statement
+            // CRITICAL: Use 'password' column name in INSERT statement
             const [result] = await connection.execute<ResultSetHeader>(
                 'INSERT INTO users (username, password) VALUES (?, ?)',
                 [username, passwordHash]
             );
             const insertedId = result.insertId;
-            // FIX: Return 'id'
             return { id: insertedId, username, role: 'user' };
         } finally {
             connection.release();
@@ -73,7 +71,7 @@ export class UsersService {
     async setRefreshToken(userId: number, refreshToken: string | null): Promise<void> {
         const connection = await this.databaseService.getConnection(); 
         try {
-            // FIX: Use 'id' for WHERE clause
+            // CRITICAL: Use 'id' for WHERE clause
             await connection.execute(
                 'UPDATE users SET refresh_token = ? WHERE id = ?',
                 [refreshToken, userId]
@@ -88,7 +86,7 @@ export class UsersService {
     async findAll(): Promise<any[]> {
         const connection = await this.databaseService.getConnection(); 
         try {
-            // FIX: Select 'id'
+            // Select id, username, role
             const [rows] = await connection.execute('SELECT id, username, role, created_at FROM users');
             return rows as any[];
         } finally {
@@ -99,7 +97,7 @@ export class UsersService {
     async updateRole(userId: number, role: 'user' | 'admin'): Promise<any> {
         const connection = await this.databaseService.getConnection(); 
         try {
-            // FIX: Use 'id' for WHERE clause
+            // CRITICAL: Use 'id' for WHERE clause
             const [result] = await connection.execute<ResultSetHeader>(
                 'UPDATE users SET role = ? WHERE id = ?',
                 [role, userId]
@@ -117,7 +115,7 @@ export class UsersService {
     async deleteUser(userId: number): Promise<void> {
         const connection = await this.databaseService.getConnection(); 
         try {
-            // FIX: Use 'id' for WHERE clause
+            // CRITICAL: Use 'id' for WHERE clause
             const [result] = await connection.execute<ResultSetHeader>(
                 'DELETE FROM users WHERE id = ?',
                 [userId]
