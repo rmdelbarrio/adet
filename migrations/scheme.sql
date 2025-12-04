@@ -1,7 +1,7 @@
 DROP TABLE IF EXISTS positions;
 DROP TABLE IF EXISTS users;
 
--- NEW: Standardizing on 'id' as PRIMARY KEY, 'password' (containing hash), and adding 'role'
+-- NEW: Standardizing on 'id' as PRIMARY KEY, 'password_hash' for security, and adding 'role'
 CREATE TABLE IF NOT EXISTS users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     username VARCHAR(100) NOT NULL UNIQUE,
@@ -26,3 +26,14 @@ CREATE TABLE IF NOT EXISTS positions (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
+
+-- NEW: Threads Table definition
+CREATE TABLE IF NOT EXISTS threads (
+    thread_id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    content TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
