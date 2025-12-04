@@ -1,42 +1,56 @@
-import { Controller, Get, Post, Body, UseGuards, Put, Param, Delete, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Body, UseGuards, Put, Param, Delete, HttpCode, HttpStatus, BadRequestException } from '@nestjs/common';
 import { UsersService } from './users.service';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard'; // Assuming you have this guard
+import { JwtAuthGuard } from '../auth/jwt-auth.guard'; // Use the existing guard
 
 // DTOs (Data Transfer Objects) for request validation
+// This DTO defines the data structure expected for a PUT request to update a user.
 class UpdateUserDto {
-    role?: 'user' | 'admin';
-    // Add other fields you might want to allow updating later, like status
+    // Role is expected to be one of these literal strings.
+    role?: 'user' | 'admin'; 
+    // We will ignore status for the backend since it's not in the DB schema, 
+    // but a production DTO would include all updatable fields.
 }
 
 @Controller('users')
 export class UsersController {
     constructor(private readonly usersService: UsersService) {}
 
-    // 1. READ ALL USERS (Protected Endpoint)
+    // --- READ ALL USERS ---
+    // GET /users
+    // Fetches a list of all registered users (visible in the dashboard table).
     @UseGuards(JwtAuthGuard)
     @Get()
     async findAll() {
-        // This relies on usersService.findAll() to correctly fetch all users
         return this.usersService.findAll();
     }
 
-    // 2. UPDATE USER (Protected Endpoint)
+    // --- UPDATE USER ---
+    // PUT /users/:id
+    // Allows updating user properties like role.
     @UseGuards(JwtAuthGuard)
     @Put(':id')
     async update(@Param('id') userId: string, @Body() updateUserDto: UpdateUserDto) {
-        // Here we rely on the service to update the user record by ID
-        const result = await this.usersService.updateRole(+userId, updateUserDto.role);
+        const { role } = updateUserDto;
+        
+        // Input validation: ensure a role is provided, even if it's the current one.
+        if (!role) {
+            throw new BadRequestException('Role field is required for user update.');
+        }
+
+        // Call the service to update the role in the database.
+        const result = await this.usersService.updateRole(+userId, role);
         return { message: 'User updated successfully', user: result };
     }
     
-    // 3. DELETE USER (Protected Endpoint)
+    // --- DELETE USER ---
+    // DELETE /users/:id
     @UseGuards(JwtAuthGuard)
     @Delete(':id')
-    @HttpCode(HttpStatus.NO_CONTENT) // Correct status code for successful deletion
+    @HttpCode(HttpStatus.NO_CONTENT) // Returns 204 on successful deletion
     async delete(@Param('id') userId: string) {
+        // Call the service to delete the user record.
         await this.usersService.deleteUser(+userId);
-        // Returns a 204 No Content response
     }
 
-    // NOTE: Creation (POST) is still handled by the separate AuthController /auth/register endpoint.
+    // NOTE: User creation (Registration) is handled by POST /auth/register in AuthController.
 }
