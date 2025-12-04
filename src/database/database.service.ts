@@ -18,9 +18,9 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       waitForConnections: true,
       connectionLimit: 10,
       queueLimit: 0,
-        ssl: {
-    rejectUnauthorized: false, // ✅ REQUIRED for Aiven/Render MySQL
-  },
+      ssl: {
+        rejectUnauthorized: false, // ✅ REQUIRED for Aiven/Render MySQL
+      },
     });
 
     const conn = await this.pool.getConnection();
@@ -33,7 +33,12 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     await this.pool.end();
   }
 
-  getPool() {
+  getPool(): mysql.Pool {
     return this.pool;
+  }
+  
+  // FIX: Add getConnection method which returns a promise for a connection object
+  async getConnection(): Promise<mysql.PoolConnection> {
+    return this.pool.getConnection();
   }
 }
