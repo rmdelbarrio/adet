@@ -1,13 +1,16 @@
-import { Injectable, Inject, HttpException, HttpStatus } from '@nestjs/common';
+import { Injectable, Inject, HttpException, HttpStatus, NotFoundException } from '@nestjs/common';
 import { DatabaseService } from '../database/database.service';
 import * as mysql from 'mysql2/promise';
 import * as bcrypt from 'bcryptjs'; 
+import { RowDataPacket, ResultSetHeader } from 'mysql2/promise';
 
 // Define a common interface for User data retrieved from DB
-interface UserDb {
-    user_id: number;
+interface UserDb extends RowDataPacket {
+    // FIX: Using 'id' to match the scheme.sql PRIMARY KEY
+    id: number; 
     username: string;
-    password_hash: string; // CRITICAL: Used for authentication
+    // FIX: Using 'password' to match the scheme.sql password column
+    password: string; 
     refresh_token: string | null;
     role: 'user' | 'admin';
 }
@@ -21,7 +24,8 @@ export class UsersService {
     async findById(userId: number): Promise<UserDb | null> {
         const connection = await this.databaseService.getConnection(); 
         try {
-            const [rows] = await connection.execute('SELECT * FROM users WHERE user_id = ?', [userId]);
+            // FIX: WHERE id = ?
+            const [rows] = await connection.execute('SELECT * FROM users WHERE id = ?', [userId]);
             return (rows as UserDb[])[0] || null;
         } finally {
             connection.release();
@@ -49,15 +53,18 @@ export class UsersService {
     }
 
     async createUser(username: string, password: string): Promise<any> {
-        const passwordHash = await bcrypt.hash(password, 10);
+        // FIX: Hashing the input password before storing
+        const passwordHash = await bcrypt.hash(password, 10); 
         const connection = await this.databaseService.getConnection(); 
         try {
-            const [result] = await connection.execute(
-                'INSERT INTO users (username, password_hash) VALUES (?, ?)',
+            // FIX: Use 'password' column name in INSERT statement
+            const [result] = await connection.execute<ResultSetHeader>(
+                'INSERT INTO users (username, password) VALUES (?, ?)',
                 [username, passwordHash]
             );
-            const insertedId = (result as mysql.ResultSetHeader).insertId;
-            return { user_id: insertedId, username, role: 'user' };
+            const insertedId = result.insertId;
+            // FIX: Return 'id'
+            return { id: insertedId, username, role: 'user' };
         } finally {
             connection.release();
         }
@@ -66,8 +73,9 @@ export class UsersService {
     async setRefreshToken(userId: number, refreshToken: string | null): Promise<void> {
         const connection = await this.databaseService.getConnection(); 
         try {
+            // FIX: Use 'id' for WHERE clause
             await connection.execute(
-                'UPDATE users SET refresh_token = ? WHERE user_id = ?',
+                'UPDATE users SET refresh_token = ? WHERE id = ?',
                 [refreshToken, userId]
             );
         } finally {
@@ -80,8 +88,8 @@ export class UsersService {
     async findAll(): Promise<any[]> {
         const connection = await this.databaseService.getConnection(); 
         try {
-            // Only select necessary public fields
-            const [rows] = await connection.execute('SELECT user_id, username, role, created_at FROM users');
+            // FIX: Select 'id'
+            const [rows] = await connection.execute('SELECT id, username, role, created_at FROM users');
             return rows as any[];
         } finally {
             connection.release();
@@ -91,15 +99,16 @@ export class UsersService {
     async updateRole(userId: number, role: 'user' | 'admin'): Promise<any> {
         const connection = await this.databaseService.getConnection(); 
         try {
-            const [result] = await connection.execute(
-                'UPDATE users SET role = ? WHERE user_id = ?',
+            // FIX: Use 'id' for WHERE clause
+            const [result] = await connection.execute<ResultSetHeader>(
+                'UPDATE users SET role = ? WHERE id = ?',
                 [role, userId]
             );
 
-            if ((result as mysql.ResultSetHeader).affectedRows === 0) {
-                throw new HttpException('User not found', HttpStatus.NOT_FOUND);
+            if (result.affectedRows === 0) {
+                throw new NotFoundException('User not found');
             }
-            return { user_id: userId, role };
+            return { id: userId, role };
         } finally {
             connection.release();
         }
@@ -108,13 +117,14 @@ export class UsersService {
     async deleteUser(userId: number): Promise<void> {
         const connection = await this.databaseService.getConnection(); 
         try {
-            const [result] = await connection.execute(
-                'DELETE FROM users WHERE user_id = ?',
+            // FIX: Use 'id' for WHERE clause
+            const [result] = await connection.execute<ResultSetHeader>(
+                'DELETE FROM users WHERE id = ?',
                 [userId]
             );
 
-            if ((result as mysql.ResultSetHeader).affectedRows === 0) {
-                throw new HttpException('User not found', HttpStatus.NOT_FOUND);
+            if (result.affectedRows === 0) {
+                throw new NotFoundException('User not found');
             }
         } finally {
             connection.release();
